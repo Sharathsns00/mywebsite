@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AI + QR Railway Track Switch Simulator</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #0b1220;
+            --accent: #06b6d4;
+            --muted: #94a3b8;
+            --track: #cbd5e1
+        }
+
+        body {
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+            margin: 0;
+            background: linear-gradient(180deg, #071025 0%, #072034 100%);
+            color: #e6eef6
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 28px auto;
+            padding: 20px
+        }
+
+        header {
+            display: flex;
+            gap: 16px;
+            align-items: center
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0
+        }
+
+        p.lead {
+            color: var(--muted);
+            margin: 6px 0 18px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 18px
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            padding: 14px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(2, 6, 23, 0.6)
+        }
+
+        .control {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        label {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        select,
+        input[type=text] {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            background: transparent;
+            color: inherit
+        }
+
+        button {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 0;
+            background: var(--accent);
+            color: #022;
+            cursor: pointer;
+            font-weight: 600
+        }
+
+        .track-canvas {
+            background: linear-gradient(180deg, #081325, #041421);
+            height: 520px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden
+        }
+
+        /* tracks */
+        .track {
+            position: absolute;
+            left: 60px;
+            right: 60px;
+            height: 10px;
+            background: var(--track);
+            top: 160px;
+            border-radius: 6px
+        }
+
+        .track.s1 {
+            top: 260px
+        }
+
+        .switch {
+            position: absolute;
+            left: calc(50% - 8px);
+            width: 160px;
+            height: 140px;
+            top: 170px;
+            pointer-events: none
+        }
+
+        .rail {
+            position: absolute;
+            height: 6px;
+            background: #2b3640;
+            border-radius: 3px
+        }
+
+        .rail.a {
+            left: 0;
+            right: 0;
+            top: 40px
+        }
+
+        .rail.b {
+            left: 0;
+            right: 0;
+            top: 84px
+        }
+
+        .point-blade {
+            position: absolute;
+            left: 50%;
+            transform-origin: left center;
+            width: 240px;
+            height: 6px;
+            background: #e6eef6;
+            border-radius: 3px;
+            top: 46px;
+            transition: transform .9s cubic-bezier(.2, .9, .3, 1)
+        }
+
+        .point-blade.to-curve {
+            transform: rotate(24deg) translateX(10px)
+        }
+
+        .train {
+            position: absolute;
+            width: 58px;
+            height: 28px;
+            background: linear-gradient(90deg, #06b6d4, #7dd3fc);
+            border-radius: 6px;
+            top: 142px;
+            left: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #022;
+            box-shadow: 0 6px 18px rgba(3, 10, 15, 0.5);
+            transition: left 2s linear, top 2s linear
+        }
+
+        .train.on-s1 {
+            top: 240px
+        }
+
+        .qr {
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+
+        .qr-box {
+            width: 82px;
+            height: 82px;
+            background: #fff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #012;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        .log {
+            height: 220px;
+            overflow: auto;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 8px;
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .status {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+
+        .badge {
+            padding: 6px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.03);
+            font-weight: 600
+        }
+
+        footer {
+            margin-top: 14px;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header>
+            <div
+                style="width:60px;height:60px;border-radius:12px;background:linear-gradient(135deg,#0ea5a0,#0284c7);display:flex;align-items:center;justify-content:center;font-weight:700;color:#022">
+                QR</div>
+            <div>
+                <h1>AI + QR Railway Track Switch Simulator</h1>
+                <p class="lead">Interactive single-page demo: scan QR codes, let the AI decide route, and animate the
+                    track switch. Safe simulation — not for production control.</p>
+            </div>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <div class="control">
+                    <label>Choose Junction (QR)</label>
+                    <select id="junctionSelect">
+                        <option value="J201" data-top="160" data-s1="260">J201 — Main Junction</option>
+                        <option value="J203" data-top="140" data-s1="240">J203 — Platform Diverge</option>
+                        <option value="J207" data-top="120" data-s1="220">J207 — Freight Loop</option>
+                    </select>
+
+                    <label>Planned Route</label>
+                    <select id="plannedRoute">
+                        <option value="straight">Straight (Main Line)</option>
+                        <option value="curve">Curve (Loop/Platform)</option>
+                    </select>
+
+                    <label>Train ID</label>
+                    <input type="text" id="trainId" value="TRN-101" />
+
+                    <div style="display:flex;gap:8px;margin-top:6px">
+                        <button id="scanBtn">Scan QR (simulate)</button>
+                        <button id="aiBtn">AI Decide & Switch</button>
+                        <button id="resetBtn">Reset</button>
+                    </div>
+
+                    <div style="margin-top:12px">
+                        <div class="status">
+                            <div class="badge" id="switchState">Switch: STRAIGHT</div>
+                            <div class="badge" id="sensorState">Sensor: OK</div>
+                            <div style="margin-left:auto;color:var(--muted);font-size:13px">AI model: <strong>rule-based
+                                    prototype</strong></div>
+                        </div>
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:10px 0">
+
+                    <label>QR Codes (click to view data)</label>
+                    <div style="display:flex;gap:10px;margin-top:8px" class="qr">
+                        <div class="qr-box" data-id="J201"
+                            data-info='{"id":"J201","gps":"12.9716,77.5946","status":"unknown"}'>J201</div>
+                        <div class="qr-box" data-id="J203"
+                            data-info='{"id":"J203","gps":"12.9728,77.5955","status":"unknown"}'>J203</div>
+                        <div class="qr-box" data-id="J207"
+                            data-info='{"id":"J207","gps":"12.9740,77.5963","status":"unknown"}'>J207</div>
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:10px 0">
+                    <label>System Log</label>
+                    <div class="log" id="log"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="track-canvas" id="canvas">
+                    <div class="track" style="top:100px"></div>
+                    <div class="track s1"></div>
+
+                    <div class="switch" id="switch">
+                        <div class="rail a"></div>
+                        <div class="rail b"></div>
+                        <div class="point-blade" id="pointBlade"></div>
+                    </div>
+
+                    <div class="train" id="train">TRN</div>
+                </div>
+                <footer>
+                    Click a QR box to inspect. Use <strong>Scan QR</strong> to read QR at the selected junction, then
+                    <strong>AI Decide & Switch</strong> to simulate the AI sending a command to the point motor.
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple simulator logic (client-side). This demonstrates flow and UI only.
+        const logEl = document.getElementById('log');
+        const scanBtn = document.getElementById('scanBtn');
+        const aiBtn = document.getElementById('aiBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const junctionSelect = document.getElementById('junctionSelect');
+        const plannedRoute = document.getElementById('plannedRoute');
+        const train = document.getElementById('train');
+        const pointBlade = document.getElementById('pointBlade');
+        const switchState = document.getElementById('switchState');
+        const sensorState = document.getElementById('sensorState');
+
+        function writeLog(text) {
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML = <div>[${time}] ${text}</div> + logEl.innerHTML;
+        }
+
+        // QR boxes clickable
+        document.querySelectorAll('.qr-box').forEach(el => {
+            el.addEventListener('click', () => {
+                const info = JSON.parse(el.dataset.info);
+                alert('QR: ' + el.dataset.id + '\n' + JSON.stringify(info, null, 2));
+                writeLog('Inspected QR: ' + el.dataset.id);
+                junctionSelect.value = el.dataset.id;
+            });
+        });
+
+        // Simulate scanning QR
+        scanBtn.addEventListener('click', () => {
+            const jid = junctionSelect.value;
+            writeLog('Scanning QR at junction ' + jid + '...');
+            // fake QR read
+            setTimeout(() => {
+                const qrData = { id: jid, gps: '12.97,77.59', status: 'OK', timestamp: new Date().toISOString() };
+                writeLog('QR read success: ' + JSON.stringify(qrData));
+            }, 700);
+        });
+
+        // AI Decide and switch
+        aiBtn.addEventListener('click', () => {
+            const jid = junctionSelect.value;
+            const desired = plannedRoute.value; // 'straight' or 'curve'
+            const tid = document.getElementById('trainId').value || 'TRN-000';
+            writeLog('AI evaluating route for ' + tid + ' at ' + jid + ' (planned=' + desired + ')');
+
+            // Simple rule-based "AI"
+            // 1) Check sensors (simulated)
+            const sensorsOk = Math.random() > 0.08; // 92% OK
+            if (!sensorsOk) {
+                sensorState.textContent = 'Sensor: FAULT';
+                sensorState.style.background = 'rgba(255,100,100,0.1)';
+                writeLog('Sensor fault detected. Aborting switch.');
+                return;
+            }
+            sensorState.textContent = 'Sensor: OK';
+
+            // 2) Check occupancy (simulated)
+            const trackClear = Math.random() > 0.12; // 88% chance clear
+            if (!trackClear) {
+                writeLog('Track not clear. AI delays switch.');
+                return;
+            }
+
+            // 3) Decision - align blade
+            if (desired === 'straight') {
+                pointBlade.classList.remove('to-curve');
+                switchState.textContent = 'Switch: STRAIGHT';
+                writeLog('AI commanded: move switch to STRAIGHT');
+            } else {
+                pointBlade.classList.add('to-curve');
+                switchState.textContent = 'Switch: CURVE';
+                writeLog('AI commanded: move switch to CURVE');
+            }
+
+            // 4) Simulate movement & confirmation
+            writeLog('Point motor moving...');
+            setTimeout(() => {
+                writeLog('Point motor: movement complete. Confirming with sensor...');
+                // confirmation
+                setTimeout(() => {
+                    writeLog('Confirmation received from QR sensor at ' + jid + '. Switch applied.');
+                    // animate train to follow chosen path
+                    animateTrain(desired);
+                }, 800);
+            }, 900);
+        });
+
+        function animateTrain(path) {
+            // move train along top track (straight) or drop to s1 (curve)
+            if (path === 'straight') {
+                train.classList.remove('on-s1');
+                train.style.left = '78%';
+                writeLog('Train moving on main line (straight).');
+            } else {
+                train.classList.add('on-s1');
+                train.style.left = '78%';
+                writeLog('Train diverted to loop/curve platform.');
+            }
+        }
+
+        resetBtn.addEventListener('click', () => {
+            pointBlade.classList.remove('to-curve');
+            switchState.textContent = 'Switch: STRAIGHT';
+            sensorState.textContent = 'Sensor: OK';
+            train.style.left = '80px';
+            train.classList.remove('on-s1');
+            writeLog('System reset.');
+        });
+
+        // init log
+        writeLog('Simulator ready. Inspect QR boxes, then simulate scanning and switching.');
+    </script>
+</body>
+
+</html>
